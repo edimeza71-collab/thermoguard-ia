@@ -53,4 +53,4 @@ else:
 
     # === 3. TABLA DE BITÁCORA ===
     st.subheader("📋 Historial de Base de Datos")
-    st.dataframe(df, use_container_width=True)
+    st.dataframe(df, use_container_width=True, hide_index=True)
