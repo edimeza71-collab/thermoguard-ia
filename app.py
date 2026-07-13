@@ -1,56 +1,68 @@
-
 import streamlit as st
 import requests
-import pandas as pd
-import plotly.express as px
 
-# === CONFIGURACIÓN DE LA PÁGINA ===
-st.set_page_config(page_title="Dashboard Industrial IoT", layout="wide")
-st.title("❄️ Panel de Monitoreo: Cavas de Congelación")
+# --- CONFIGURACIÓN DE CONEXIONES ---
+FIREBASE_URL = "https://monitoreoia-b2097-default-rtdb.firebaseio.com/datos.json"
+BOT_TOKEN = "8916674528:AAG0uHgWcg-5h4QB_BqidoNUQPyxBHZ3Ebc"
+CHAT_ID = "1476571501"
+APP_URL = "https://thermoguard-ia.streamlit.app"
 
-# === CONEXIÓN A LA BASE DE DATOS ===
-# Sustituye esta URL por la tuya de Firebase
-URL_FIREBASE = "https://monitoreoia-b2097-default-rtdb.firebaseio.com/historial_ia.json"
+# Configuración de la pestaña de la página web
+st.set_page_config(page_title="Panel TECNI HOME", page_icon="❄️", layout="centered")
 
-def cargar_datos():
-    respuesta = requests.get(URL_FIREBASE)
-    if respuesta.status_code == 200 and respuesta.json() is not None:
-        # Convertimos el JSON de Google a una tabla ordenada
-        df = pd.DataFrame.from_dict(respuesta.json(), orient='index')
-        return df
+st.title("❄️ Control de Refrigeración - TECNI HOME")
+st.write("Monitoreo en tiempo real del ciclo de refrigeración.")
+
+# --- FUNCIÓN PARA ENVIAR TELEGRAM ---
+def enviar_telegram(mensaje):
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    payload = {"chat_id": CHAT_ID, "text": mensaje}
+    try:
+        requests.post(url, json=payload)
+    except Exception as e:
+        st.error("Error al intentar enviar el mensaje de Telegram.")
+
+# --- FUNCIÓN PARA LEER FIREBASE ---
+def obtener_datos():
+    try:
+        respuesta = requests.get(FIREBASE_URL)
+        if respuesta.status_code == 200:
+            return respuesta.json()
+    except Exception as e:
+        st.error("Error conectando a la base de datos de Firebase.")
+    return None
+
+# --- EJECUCIÓN PRINCIPAL ---
+datos = obtener_datos()
+
+if datos:
+    # Extraer los datos de Firebase, por defecto 0 si no hay lectura
+    tuberia_baja = datos.get("tuberia_baja", 0.0)
+    tuberia_alta = datos.get("tuberia_alta", 0.0)
+
+    # Mostrar los indicadores visuales en la página web
+    col1, col2 = st.columns(2)
+    col1.metric(label="Tubería Baja (Succión)", value=f"{tuberia_baja} °C")
+    col2.metric(label="Tubería Alta (Líquido)", value=f"{tuberia_alta} °C")
+    
+    # --- LÓGICA DE ALERTAS (EL CEREBRO) ---
+    # Parámetros de ejemplo: Alerta si la tubería de alta pasa de 45°C o la baja baja de -10°C
+    if tuberia_alta > 45.0 or tuberia_baja < -10.0:
+        alerta_msg = (
+            f"🚨 ALERTA TECNI HOME 🚨\n"
+            f"Falla detectada en el equipo.\n\n"
+            f"❄️ Tubería Baja: {tuberia_baja}°C\n"
+            f"🔥 Tubería Alta: {tuberia_alta}°C\n\n"
+            f"Revisa el panel interactivo aquí:\n{APP_URL}"
+        )
+        enviar_telegram(alerta_msg)
+        st.error("⚠️ Parámetros fuera de rango. Se ha enviado una alerta a Telegram.")
     else:
-        return pd.DataFrame()
-
-df = cargar_datos()
-
-if df.empty:
-    st.warning("No hay datos en la base de datos todavía. Corre el simulador primero.")
+        st.success("✅ El ciclo de refrigeración está operando dentro de los parámetros normales.")
 else:
-    # Ordenamos por fecha para tener lo más reciente al final
-    df = df.sort_values(by="fecha_hora")
-    ultima_lectura = df.iloc[-1]
-
-    # === 1. INDICADORES EN TIEMPO REAL ===
-    st.subheader("📡 Monitoreo en Tiempo Real")
-    col1, col2, col3 = st.columns(3)
-
-    with col1:
-        st.metric("🌡️ Temperatura Actual", f"{ultima_lectura['temperatura']} °C")
-    with col2:
-        st.metric("⏱️ Presión Actual", f"{ultima_lectura['presion']} PSI")
-    with col3:
-        estado = ultima_lectura['diagnostico_ia']
-        color = "red" if "CRÍTICO" in estado.upper() else "green"
-        st.markdown(f"**Estado del Sistema:** <br><span style='color:{color}; font-size:24px'>{estado}</span>", unsafe_allow_html=True)
-
-    st.divider()
-
-    # === 2. GRÁFICA HISTÓRICA ===
-    st.subheader("📈 Comportamiento Térmico")
-    fig = px.line(df, x="fecha_hora", y="temperatura", markers=True, title="Variación de Temperatura en el Tiempo")
-    fig.add_hline(y=-10, line_dash="dash", line_color="red", annotation_text="Límite de Riesgo")
-    st.plotly_chart(fig, use_container_width=True)
-
-    # === 3. TABLA DE BITÁCORA ===
-    st.subheader("📋 Historial de Base de Datos")
-    st.dataframe(df, use_container_width=True, hide_index=True)
+    st.info("Esperando comunicación con el ESP32...")
+    
+# Botón para forzar la actualización de la página
+st.write("---")
+if st.button("Actualizar Lecturas Ahora"):
+    st.rerun()
