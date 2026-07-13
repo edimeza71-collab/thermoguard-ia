@@ -1,5 +1,11 @@
 import streamlit as st
 import requests
+import google.generativeai as genai
+
+# --- CONFIGURACIÓN SEGURA DE IA ---
+# El sistema buscará la llave en los secretos de Streamlit
+clave_secreta = st.secrets["GOOGLE_API_KEY"]
+genai.configure(api_key=clave_secreta)
 
 # --- CONFIGURACIÓN DE CONEXIONES ---
 FIREBASE_URL = "
