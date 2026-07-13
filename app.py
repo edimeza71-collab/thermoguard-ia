@@ -8,7 +8,7 @@ clave_secreta = st.secrets["GOOGLE_API_KEY"]
 genai.configure(api_key=clave_secreta)
 
 # --- CONFIGURACIÓN DE CONEXIONES ---
-FIREBASE_URL = FIREBASE_URL = "https://monitoreoia-b2097-default-rtdb.firebaseio.com/"
+FIREBASE_URL = FIREBASE_URL = "FIREBASE_URL = "https://monitoreoia-b2097-default-rtdb.firebaseio.com/.json""
 https:"//monitoreoia-b2097-default-rtdb.firebaseio.com"
 BOT_TOKEN = "8916674528:AAG0uHgWcg-5h4QB_BqidoNUQPyxBHZ3Ebc"
 CHAT_ID = "1476571501"
