@@ -2,7 +2,8 @@ import streamlit as st
 import requests
 
 # --- CONFIGURACIÓN DE CONEXIONES ---
-FIREBASE_URL = "https://monitoreoia-b2097-default-rtdb.firebaseio.com/datos.json"
+FIREBASE_URL = "
+https://monitoreoia-b2097-default-rtdb.firebaseio.com"
 BOT_TOKEN = "8916674528:AAG0uHgWcg-5h4QB_BqidoNUQPyxBHZ3Ebc"
 CHAT_ID = "1476571501"
 APP_URL = "https://thermoguard-ia.streamlit.app"
