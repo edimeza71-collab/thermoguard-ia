@@ -8,11 +8,13 @@ BOT_TOKEN = "8916674528:AAG0uHgWcg-5h4QB_BqidoNUQPyxBHZ3Ebc"
 CHAT_ID = "1476571501"
 APP_URL = "https://thermoguard-ia.streamlit.app"
 
+# Configurar la API Key globalmente (esto corrige el error anterior)
+genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
+
 # Configuración de la página
 st.set_page_config(page_title="Panel TECNI HOME", page_icon="❄️", layout="centered")
 
 st.title("❄️ Control de Refrigeración - TECNI HOME")
-st.write("Monitoreo en tiempo real del ciclo de refrigeración.")
 
 # --- FUNCIONES DE SOPORTE ---
 def enviar_telegram(mensaje):
@@ -25,14 +27,8 @@ def enviar_telegram(mensaje):
 
 def analizar_falla_con_ia(baja, alta, estado):
     try:
-        # Extraemos la llave de los secretos de Streamlit
-        clave_secreta = st.secrets["GOOGLE_API_KEY"]
-        
-        # Inicialización moderna recomendada por la librería de Google
-        client = genai.GenerativeModel(
-            model_name='gemini-1.5-flash',
-            api_key=clave_secreta
-        )
+        # Usamos el modelo configurado globalmente
+        model = genai.GenerativeModel('gemini-1.5-flash')
         
         prompt = f"""
         Eres un experto técnico de TECNI HOME. Analiza esta falla de refrigeración:
@@ -43,10 +39,10 @@ def analizar_falla_con_ia(baja, alta, estado):
         Dame un diagnóstico técnico breve y directo. ¿Qué pieza revisar primero y por qué?
         """
         
-        response = client.generate_content(prompt)
+        response = model.generate_content(prompt)
         return response.text
-    except Exception as error_ia:
-        return f"Error al conectar con el motor de IA: {str(error_ia)}"
+    except Exception as e:
+        return f"Error técnico de IA: {str(e)}"
 
 def obtener_datos():
     try:
@@ -54,7 +50,7 @@ def obtener_datos():
         if respuesta.status_code == 200:
             return respuesta.json()
     except:
-        st.error("Error conectando a Firebase.")
+        return None
     return None
 
 # --- EJECUCIÓN PRINCIPAL ---
@@ -66,37 +62,29 @@ if datos:
     estado_sistema = datos.get("estado_equipo", "Esperando datos...")
 
     col1, col2 = st.columns(2)
-    col1.metric(label="Tubería Baja (Succión)", value=f"{tuberia_baja} °C")
-    col2.metric(label="Tubería Alta (Líquido)", value=f"{tuberia_alta} °C")
+    col1.metric(label="Tubería Baja", value=f"{tuberia_baja} °C")
+    col2.metric(label="Tubería Alta", value=f"{tuberia_alta} °C")
     
-    st.write(f"### Estado del sistema: **{estado_sistema}**")
+    st.write(f"### Estado: **{estado_sistema}**")
     
     if "CODIGO" in estado_sistema:
         st.error(f"⚠️ {estado_sistema}")
-        
-        # Botón para activar la IA en la web
         if st.button("💡 Analizar Falla con IA"):
             with st.spinner("Consultando al experto virtual..."):
                 reporte = analizar_falla_con_ia(tuberia_baja, tuberia_alta, estado_sistema)
-                st.markdown("### 🤖 Diagnóstico del Experto:")
+                st.markdown("### 🤖 Diagnóstico:")
                 st.info(reporte)
         
-        # Mensaje corto para Telegram
-        alerta_corta = (
-            f"🚨 ALERTA TECNI HOME 🚨\n"
-            f"Falla: {estado_sistema}\n"
-            f"T: {tuberia_baja}°C / {tuberia_alta}°C\n"
-            f"🔗 Diagnóstico: {APP_URL}"
-        )
+        # Enviar alerta corta
+        alerta_corta = f"🚨 ALERTA TECNI HOME: {estado_sistema}. Diagnóstico: {APP_URL}"
         enviar_telegram(alerta_corta)
         
     elif "OPERATIVO" in estado_sistema:
-        st.success("✅ El ciclo de refrigeración está operando correctamente.")
+        st.success("✅ Sistema operando correctamente.")
     else:
         st.warning(f"ℹ️ {estado_sistema}")
 else:
     st.info("Esperando comunicación con el ESP32...")
     
-st.write("---")
-if st.button("Actualizar Lecturas Ahora"):
+if st.button("Actualizar"):
     st.rerun()
