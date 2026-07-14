@@ -28,7 +28,7 @@ def enviar_telegram(mensaje):
         pass # Silencioso para no romper la interfaz
 
 def analizar_falla_con_ia(baja, alta, estado):
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    model = genai.GenerativeModelmodel = ('gemini-1.5-pro')
     prompt = f"""
     Eres un experto técnico de TECNI HOME. Analiza esta falla de refrigeración:
     - Estado: {estado}
