@@ -8,8 +8,11 @@ BOT_TOKEN = "8916674528:AAG0uHgWcg-5h4QB_BqidoNUQPyxBHZ3Ebc"
 CHAT_ID = "1476571501"
 APP_URL = "https://thermoguard-ia.streamlit.app"
 
-# Configurar la API Key globalmente (esto corrige el error anterior)
-genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
+# Configurar la API Key globalmente
+try:
+    genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
+except Exception as e:
+    st.error(f"Error al cargar la API Key de los Secrets: {e}")
 
 # Configuración de la página
 st.set_page_config(page_title="Panel TECNI HOME", page_icon="❄️", layout="centered")
@@ -27,8 +30,44 @@ def enviar_telegram(mensaje):
 
 def analizar_falla_con_ia(baja, alta, estado):
     try:
-        # Usamos el modelo configurado globalmente
-        model = genai.GenerativeModel('gemini-pro')
+        # 1. Escaneo automático de modelos disponibles en tu cuenta
+        modelos_encontrados = []
+        for m in genai.list_models():
+            if 'generateContent' in m.supported_generation_methods:
+                modelos_encontrados.append(m.name.replace("models/", ""))
+        
+        # 2. Elegir el mejor modelo activo de forma inteligente
+        modelo_final = None
+        
+        # Prioridad 1: Buscar gemini-1.5-flash (Estándar recomendado)
+        for m in modelos_encontrados:
+            if "1.5-flash" in m:
+                modelo_final = m
+                break
+                
+        # Prioridad 2: Buscar cualquier otra variante de 'flash' activa
+        if not modelo_final:
+            for m in modelos_encontrados:
+                if "flash" in m:
+                    modelo_final = m
+                    break
+                    
+        # Prioridad 3: Buscar cualquier variante de 'pro' activa
+        if not modelo_final:
+            for m in modelos_encontrados:
+                if "pro" in m:
+                    modelo_final = m
+                    break
+
+        # Si no detecta ninguno de los anteriores, toma el primero que responda
+        if not modelo_final and modelos_encontrados:
+            modelo_final = modelos_encontrados[0]
+            
+        if not modelo_final:
+            return "Error: Tu API Key no tiene ningún modelo de texto activo o autorizado."
+
+        # 3. Ejecutar el diagnóstico con el modelo descubierto
+        model = genai.GenerativeModel(modelo_final)
         
         prompt = f"""
         Eres un experto técnico de TECNI HOME. Analiza esta falla de refrigeración:
@@ -40,9 +79,10 @@ def analizar_falla_con_ia(baja, alta, estado):
         """
         
         response = model.generate_content(prompt)
-        return response.text
+        return f"*(Diagnóstico generado automáticamente con el modelo: {modelo_final})*\n\n{response.text}"
+        
     except Exception as e:
-        return f"Error técnico de IA: {str(e)}"
+        return f"Error en auto-descubrimiento de modelos: {str(e)}"
 
 def obtener_datos():
     try:
@@ -75,7 +115,6 @@ if datos:
                 st.markdown("### 🤖 Diagnóstico:")
                 st.info(reporte)
         
-        # Enviar alerta corta
         alerta_corta = f"🚨 ALERTA TECNI HOME: {estado_sistema}. Diagnóstico: {APP_URL}"
         enviar_telegram(alerta_corta)
         
