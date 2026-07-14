@@ -2,10 +2,6 @@ import streamlit as st
 import requests
 import google.generativeai as genai
 
-# --- CONFIGURACIÓN SEGURA DE IA ---
-clave_secreta = st.secrets["GOOGLE_API_KEY"]
-genai.configure(api_key=clave_secreta)
-
 # --- CONFIGURACIÓN DE CONEXIONES ---
 FIREBASE_URL = "https://monitoreoia-b2097-default-rtdb.firebaseio.com/datos.json"
 BOT_TOKEN = "8916674528:AAG0uHgWcg-5h4QB_BqidoNUQPyxBHZ3Ebc"
@@ -25,20 +21,32 @@ def enviar_telegram(mensaje):
     try:
         requests.post(url, json=payload)
     except:
-        pass # Silencioso para no romper la interfaz
+        pass
 
 def analizar_falla_con_ia(baja, alta, estado):
-    model = genai.GenerativeModelmodel = ('gemini-1.5-pro')
-    prompt = f"""
-    Eres un experto técnico de TECNI HOME. Analiza esta falla de refrigeración:
-    - Estado: {estado}
-    - Temp. Tubería Baja: {baja}°C
-    - Temp. Tubería Alta: {alta}°C
-    
-    Dame un diagnóstico técnico breve y directo. ¿Qué pieza revisar primero y por qué?
-    """
-    response = model.generate_content(prompt)
-    return response.text
+    try:
+        # Extraemos la llave de los secretos de Streamlit
+        clave_secreta = st.secrets["GOOGLE_API_KEY"]
+        
+        # Inicialización moderna recomendada por la librería de Google
+        client = genai.GenerativeModel(
+            model_name='gemini-1.5-flash',
+            api_key=clave_secreta
+        )
+        
+        prompt = f"""
+        Eres un experto técnico de TECNI HOME. Analiza esta falla de refrigeración:
+        - Estado: {estado}
+        - Temp. Tubería Baja: {baja}°C
+        - Temp. Tubería Alta: {alta}°C
+        
+        Dame un diagnóstico técnico breve y directo. ¿Qué pieza revisar primero y por qué?
+        """
+        
+        response = client.generate_content(prompt)
+        return response.text
+    except Exception as error_ia:
+        return f"Error al conectar con el motor de IA: {str(error_ia)}"
 
 def obtener_datos():
     try:
