@@ -125,5 +125,6 @@ if datos:
 else:
     st.info("Esperando comunicación...")
 
-if st.button("Actualizar"): 
-    st.rerun()
+# --- ACTUALIZACIÓN AUTOMÁTICA ---
+time.sleep(15) # Espera 15 segundos (el mismo tiempo de tu Arduino)
+st.rerun()     # Vuelve a cargar la página sola
