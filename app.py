@@ -9,9 +9,9 @@ CHAT_ID = "1476571501"
 APP_URL = "https://thermoguard-ia-8tnwql6ndqvxzbebelhdvy.streamlit.app"
 
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-st.set_page_config(page_title="Panel TECNI HOME", page_icon="❄️", layout="centered")
+st.set_page_config(page_title="Panel TermoGuardIA", page_icon="❄️", layout="centered")
 
-st.title("❄️ Control de Refrigeración - TECNI HOME")
+st.title("❄️ Control de Refrigeración - TermoGuardIA")
 
 # --- FUNCIONES ---
 def enviar_telegram(mensaje):
@@ -24,7 +24,7 @@ def analizar_falla_con_ia(baja, alta, estado):
         modelos = [m.name.replace("models/", "") for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
         modelo_final = next((m for m in modelos if "flash" in m), modelos[0])
         model = genai.GenerativeModel(modelo_final)
-        prompt = f"Experto TECNI HOME. Estado: {estado}. Baja: {baja}°C, Alta: {alta}°C. ¿Qué revisar de forma directa?"
+        prompt = f"Experto TERMOGUARDIA. Estado: {estado}. Baja: {baja}°C, Alta: {alta}°C. ¿Qué revisar de forma directa?"
         return model.generate_content(prompt).text
     except Exception as e: return f"Error IA: {str(e)}"
 
@@ -52,7 +52,7 @@ if datos:
     # Manejo inteligente de estados para el Dashboard
     if estado_sistema != st.session_state.estado_anterior:
         if "REINICIADO" in estado_sistema:
-            enviar_telegram(f"⚡ Aviso TECNI HOME: El sistema se ha reiniciado (posible corte eléctrico).")
+            enviar_telegram(f"⚡ Aviso TermoGuardIA: El sistema se ha reiniciado (posible corte eléctrico).")
         st.session_state.estado_anterior = estado_sistema
 
     if "CODIGO" in estado_sistema:
