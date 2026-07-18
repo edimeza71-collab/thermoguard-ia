@@ -28,7 +28,8 @@ def analizar_falla_con_ia(baja, alta, estado):
         modelos = [m.name.replace("models/", "") for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
         modelo_final = next((m for m in modelos if "flash" in m), modelos[0])
         model = genai.GenerativeModel(modelo_final)
-        prompt = f"Experto TERMOGUARDIA. Estado: {estado}. Baja: {baja}°C, Alta: {alta}°C. ¿Qué revisar de forma directa?"
+        # Prompt mejorado con enfoque técnico
+        prompt = f"Actúa como ingeniero jefe de ThermoGuardIA. Analiza esta falla de refrigeración: {estado}. Temperatura Baja: {baja}°C, Temperatura Alta: {alta}°C. Proporciona 3 pasos de diagnóstico técnico directo y profesional en formato de viñetas breves."
         return model.generate_content(prompt).text
     except Exception as e: 
         return f"Error IA: {str(e)}"
@@ -47,9 +48,9 @@ if 'estado_anterior' not in st.session_state:
 datos = obtener_datos()
 
 if datos:
-    # 1. Leer los datos de Firebase
-    tuberia_baja = datos.get("tuberia_baja", 0.0)
-    tuberia_alta = datos.get("tuberia_alta", 0.0)
+    # 1. Leer los datos de Firebase (CORREGIDO PARA COINCIDIR CON ESP32)
+    tuberia_baja = datos.get("temp_baja", 0.0)
+    tuberia_alta = datos.get("temp_alta", 0.0)
     estado_sistema = datos.get("estado_equipo", "Esperando datos...")
     ultimo_latido = datos.get("last_seen", 0)
 
@@ -89,10 +90,11 @@ if datos:
             enviar_telegram(f"⚡ Aviso TermoGuardIA: El sistema se ha reiniciado (posible corte eléctrico).")
         st.session_state.estado_anterior = estado_sistema
 
-    if "CODIGO" in estado_sistema:
+    # CORREGIDO EL DISPARADOR: Ahora se activa al recibir "E-"
+    if "E-" in estado_sistema:
         st.error(f"⚠️ {estado_sistema}")
         if st.button("💡 Analizar Falla con IA"):
-            with st.spinner("Consultando..."): 
+            with st.spinner("Consultando matriz de diagnóstico..."): 
                 st.info(analizar_falla_con_ia(tuberia_baja, tuberia_alta, estado_sistema))
     elif "REINICIADO" in estado_sistema:
         st.info("ℹ️ Sistema recién encendido. Esperando estabilización de lecturas...")
@@ -108,23 +110,21 @@ if datos:
         st.session_state.alerta_enviada = False
 
     if ultimo_latido != st.session_state.latido_anterior:
-        # El Arduino sigue enviando datos frescos
         st.session_state.latido_anterior = ultimo_latido
         st.session_state.tiempo_ultima_lectura = time.time()
         st.session_state.alerta_enviada = False
     else:
-        # El latido se congeló
         tiempo_desconectado = time.time() - st.session_state.tiempo_ultima_lectura
-        if tiempo_desconectado > 120:  # 120 segundos = 2 minutos
+        if tiempo_desconectado > 120:  
             st.error("⚠️ PÉRDIDA DE COMUNICACIÓN CON EL EQUIPO (Wi-Fi o Energía)")
             if not st.session_state.alerta_enviada:
-                enviar_telegram("🚨 ALERTA ThermoGuard IA 🚨\n\n⚠️ EQUIPO DESCONECTADO ⚠️\nSe ha perdido la comunicación por Wi-Fi o falta de energía eléctrica en el sitio.")
+                enviar_telegram("🚨 ALERTA TermoGuardIA 🚨\n\n⚠️ EQUIPO DESCONECTADO ⚠️\nSe ha perdido la comunicación por Wi-Fi o falta de energía eléctrica en el sitio.")
                 st.session_state.alerta_enviada = True
     # ------------------------------------------------
 
 else:
-    st.info("Esperando comunicación...")
+    st.info("Esperando comunicación con los sensores...")
 
 # --- ACTUALIZACIÓN AUTOMÁTICA ---
-time.sleep(15) # Espera 15 segundos (el mismo tiempo de tu Arduino)
-st.rerun()     # Vuelve a cargar la página sola
+time.sleep(15) 
+st.rerun()
